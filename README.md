@@ -1,13 +1,14 @@
 # ADUANERO.AI · Venezuela
-Motor de Clasificación Arancelaria NANDINA — Decreto N° 2.647
+Motor de Clasificación Arancelaria NANDINA — Decreto N° 4.944
+Gaceta Oficial N° 6.804 Extraordinario — 24 de abril de 2024
 
 ## Tecnologías
 - React 18 + Vite
 - CSS Modules
 - Anthropic Claude API (claude-sonnet-4)
+- Base arancelaria real: 11.915 subpartidas NANDINA extraídas del PDF oficial
 
 ## Instalación local
-
 ```bash
 npm install
 cp .env.example .env.local
@@ -16,39 +17,29 @@ npm run dev
 ```
 
 ## Despliegue en Cloudflare Pages
-
 1. Sube el repositorio a GitHub
-2. En Cloudflare Pages → "Create a project" → conecta tu repo
-3. Configuración de build:
-   - **Framework preset**: Vite
-   - **Build command**: `npm run build`
-   - **Build output directory**: `dist`
-4. En **Environment variables**, agrega:
-   - `VITE_ANTHROPIC_API_KEY` = tu API key de Anthropic
-5. Deploy
+2. Cloudflare Pages → Create → Connect to Git → selecciona el repo
+3. Build command: `npm run build`
+4. Build output directory: `dist`
+5. Environment variables: `VITE_ANTHROPIC_API_KEY` = tu API key
+6. Save and Deploy
 
-## Estructura del proyecto
-
+## Estructura
 ```
+public/
+  arancel.json     ← 11.915 subpartidas extraídas del Decreto N° 4.944
 src/
-  components/
-    Header.jsx / .module.css
-    MessageBubble.jsx / .module.css
-    InputBar.jsx / .module.css
+  components/      ← Header, MessageBubble, InputBar
   utils/
-    api.js         ← llamada a Anthropic API
+    api.js         ← inyecta datos reales del arancel en cada consulta
     format.js      ← formateo de moneda
-  constants.js     ← SYSTEM_PROMPT + consultas rápidas
-  App.jsx          ← estado principal del chat
-  index.css        ← variables CSS globales
-  main.jsx         ← entry point
+  constants.js     ← system prompt + consultas rápidas
+  App.jsx          ← estado del chat
 ```
 
-## Funcionalidades
-- Clasificación arancelaria NANDINA a 10 dígitos
-- Fundamento RGI (Reglas Generales de Interpretación 1, 3b, 6)
-- Notas de Sección y Capítulo citadas
-- Preguntas de aclaración inteligentes (máx. 3)
-- Valoración aduanera proyectada (CIF, Ad Valorem, Tasa 1%, IVA 16%)
-- Detección de Duda Razonable en precios FOB atípicos
-- Régimen legal: SENCAMER, MPPS, INSAI, etc.
+## Funcionamiento del RAG
+Cada consulta del usuario activa un motor de búsqueda semántica local que:
+1. Busca las subpartidas más relevantes en arancel.json (11.915 entradas)
+2. Extrae las notas de capítulo aplicables
+3. Inyecta los datos reales en el prompt de Claude
+4. Claude clasifica citando el código exacto del arancel oficial
