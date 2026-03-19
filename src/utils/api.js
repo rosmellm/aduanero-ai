@@ -18,7 +18,6 @@ function getRelevantEntries(query, data, maxEntries = 20) {
   if (!data) return []
   const q = query.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
   const words = q.split(/\s+/).filter(w => w.length > 3)
-
   const scored = data.entries.map(e => {
     const desc = (e.d || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     let score = 0
@@ -36,7 +35,6 @@ function getRelevantEntries(query, data, maxEntries = 20) {
     if ((q.includes('quimico') || q.includes('quimica') || q.includes('reactivo')) && (code.startsWith('28') || code.startsWith('29') || code.startsWith('38'))) score += 2
     return { ...e, score }
   })
-
   return scored.filter(e => e.score > 0).sort((a, b) => b.score - a.score).slice(0, maxEntries)
 }
 
@@ -44,26 +42,65 @@ function buildContextBlock(query, data) {
   const relevant = getRelevantEntries(query, data)
   if (relevant.length === 0) return ''
   const regimeMap = data.regime_map || {}
-
   const chapters = [...new Set(relevant.map(e => (e.c || '').slice(0, 2)))]
   const chapterNotesText = chapters.map(cap => {
     const note = data.chapter_notes && data.chapter_notes[cap]
     return note ? 'CAP ' + cap + ': ' + note.slice(0, 500) : ''
   }).filter(Boolean).join('\n\n')
-
   const entriesText = relevant.map(e => {
     const regs = (e.r || []).map(r => regimeMap[r] ? r + '=' + regimeMap[r] : r).join(', ')
     return e.c + ' | "' + e.d + '" | AdVal:' + e.av + '% | Reg:[' + regs + ']' + (e.bit ? ' [BIT]' : '') + ' | ' + e.u
   }).join('\n')
-
-  return '\n\n=== DATOS REALES - DECRETO N° 4.944 (GACETA 6.804 EXTRAORDINARIO - 24/04/2024) ===\n\nSUBPARTIDAS NANDINA ENCONTRADAS EN EL ARANCEL OFICIAL:\n' + entriesText + '\n\nNOTAS DE CAPÍTULO (texto oficial):\n' + chapterNotesText + '\n\nREGÍMENES LEGALES ART. 21:\n' + Object.entries(regimeMap).map(([k, v]) => k + '. ' + v).join('\n') + '\n\nINSTRUCCIÓN: Usa estos datos reales. Cita el código exacto de la tabla. Tasa Aduanera 1% (Art. 3 RDLOA). IVA 16% base agravada. Decreto vigente: N° 4.944.\n=== FIN DATOS OFICIALES ==='
+  return '\n\n=== DATOS REALES - DECRETO N° 4.944 (GACETA 6.804 EXTRAORDINARIO - 24/04/2024) ===\n\nSUBPARTIDAS NANDINA ENCONTRADAS:\n' + entriesText + '\n\nNOTAS DE CAPÍTULO:\n' + chapterNotesText + '\n\nREGÍMENES LEGALES ART. 21:\n' + Object.entries(regimeMap).map(([k, v]) => k + '. ' + v).join('\n') + '\n\nINSTRUCCIÓN: Usa estos datos reales. Cita el código exacto. Tasa Aduanera 1% (Art. 3 RDLOA). IVA 16%.\n=== FIN DATOS OFICIALES ==='
 }
 
-export async function callAduaneroAI(messages) {
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result.split(',')[1])
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+function getMediaType(file) {
+  const name = file.name.toLowerCase()
+  if (name.endsWith('.pdf')) return 'application/pdf'
+  if (name.endsWith('.jpg') || name.endsWith('.jpeg')) return 'image/jpeg'
+  if (name.endsWith('.png')) return 'image/png'
+  if (name.endsWith('.gif')) return 'image/gif'
+  if (name.endsWith('.webp')) return 'image/webp'
+  return file.type || 'application/octet-stream'
+}
+
+export async function callAduaneroAI(messages, attachedFiles = []) {
   const data = await loadArancelData()
   const lastUser = [...messages].reverse().find(m => m.role === 'user')
-  const contextBlock = lastUser ? buildContextBlock(lastUser.content, data) : ''
+  const contextBlock = lastUser ? buildContextBlock(typeof lastUser.content === 'string' ? lastUser.content : lastUser.content?.[0]?.text || '', data) : ''
   const enrichedSystem = SYSTEM_PROMPT + contextBlock
+
+  // Build messages with file attachments
+  const apiMessages = []
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i]
+    if (msg.role === 'user' && i === messages.length - 1 && attachedFiles.length > 0) {
+      // Last user message — attach files
+      const contentParts = []
+      for (const file of attachedFiles) {
+        const b64 = await fileToBase64(file)
+        const mediaType = getMediaType(file)
+        if (mediaType === 'application/pdf') {
+          contentParts.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } })
+        } else if (mediaType.startsWith('image/')) {
+          contentParts.push({ type: 'image', source: { type: 'base64', media_type: mediaType, data: b64 } })
+        }
+      }
+      contentParts.push({ type: 'text', text: typeof msg.content === 'string' ? msg.content : msg.content?.[0]?.text || '' })
+      apiMessages.push({ role: 'user', content: contentParts })
+    } else {
+      apiMessages.push(msg)
+    }
+  }
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -77,7 +114,7 @@ export async function callAduaneroAI(messages) {
       model: 'claude-sonnet-4-20250514',
       max_tokens: 1500,
       system: enrichedSystem,
-      messages,
+      messages: apiMessages,
     }),
   })
 
