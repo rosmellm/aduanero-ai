@@ -2,45 +2,27 @@ import React, { useState, useRef, useEffect } from 'react'
 import Header from './components/Header.jsx'
 import MessageBubble from './components/MessageBubble.jsx'
 import InputBar from './components/InputBar.jsx'
+import HistoryPanel from './components/HistoryPanel.jsx'
 import { callAduaneroAI, loadArancelData } from './utils/api.js'
+import { saveToHistory } from './utils/storage.js'
 import styles from './App.module.css'
 
 function WelcomeBubble({ arancelReady }) {
   return (
-    <div style={{ maxWidth: '88%', padding: '10px 14px', borderRadius: '10px', fontSize: '13px', lineHeight: '1.7', background: 'var(--bg2)', border: '1px solid var(--border)', color: 'var(--text)', borderTopLeftRadius: '3px' }}>
-      <div style={{ fontFamily: 'var(--mono)', fontSize: '11px', fontWeight: 500, color: 'var(--gold)', letterSpacing: '0.08em', marginBottom: '6px', textTransform: 'uppercase' }}>Sistema activo</div>
-      Bienvenido al <b>Motor de Clasificación Arancelaria de Venezuela</b>. Configurado bajo el <b>Decreto N° 4.944</b> — Gaceta Oficial N° 6.804 Extraordinario del 24 de abril de 2024.
+    <div className={styles.welcomeBubble}>
+      <div className={styles.welcomeTitle}>Sistema activo</div>
+      Bienvenido al <strong>Motor de Clasificación Arancelaria de Venezuela</strong>. Configurado bajo el <strong>Decreto N° 4.944</strong> — Gaceta Oficial N° 6.804 Extraordinario del 24 de abril de 2024.
       <br /><br />
-      <span style={{ color: arancelReady ? 'var(--green)' : 'var(--gold)', fontFamily: 'var(--mono)', fontSize: '11px' }}>
+      <span style={{ color: arancelReady ? 'var(--green)' : 'var(--gold3)', fontFamily: 'var(--mono)', fontSize: '11px' }}>
         {arancelReady ? '● Base arancelaria cargada: 11.915 subpartidas NANDINA' : '○ Cargando base arancelaria...'}
       </span>
       <br /><br />
-      Escriba el nombre de una mercancía, adjunte un <b>PDF</b>, <b>imagen</b> o <b>factura</b> para clasificación automática.
-      <ul style={{ listStyle: 'none', padding: 0, marginTop: '8px' }}>
-        {[
-          'Nombre del producto → clasificación NANDINA a 10 dígitos',
-          'Adjunte PDF / imagen de factura o declaración',
-          'Incluya FOB + Flete + Seguro para liquidación tributaria',
-          'Datos extraídos del Decreto N° 4.944 oficial',
-        ].map((t, i) => (
-          <li key={i} style={{ padding: '3px 0', color: 'var(--text2)', fontSize: '12px' }}>
-            <span style={{ color: 'var(--gold)' }}>▸ </span>{t}
-          </li>
+      Escriba el nombre de una mercancía, adjunte una <strong>factura PDF</strong> o <strong>imagen</strong> para clasificación automática. Si sube una factura con varias mercancías, clasifico todas.
+      <ul className={styles.welcomeList}>
+        {['Nombre del producto → clasificación NANDINA a 10 dígitos','Factura con múltiples ítems → clasificación simultánea','FOB + Flete + Seguro → liquidación tributaria completa','Historial de consultas guardado localmente'].map((t,i) => (
+          <li key={i}><span style={{ color: 'var(--gold2)' }}>▸ </span>{t}</li>
         ))}
       </ul>
-    </div>
-  )
-}
-
-function FilePreviewRow({ files }) {
-  if (!files || files.length === 0) return null
-  return (
-    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '4px' }}>
-      {files.map(f => (
-        <span key={f.name} style={{ fontFamily: 'var(--mono)', fontSize: '10px', background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: '4px', padding: '2px 8px', color: 'var(--gold2)' }}>
-          {f.name.endsWith('.pdf') ? '📄' : '🖼'} {f.name.slice(0, 20)}{f.name.length > 20 ? '…' : ''}
-        </span>
-      ))}
     </div>
   )
 }
@@ -50,7 +32,14 @@ export default function App() {
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(false)
   const [arancelReady, setArancelReady] = useState(false)
+  const [theme, setTheme] = useState('dark')
+  const [showHistory, setShowHistory] = useState(false)
   const bottomRef = useRef(null)
+  const inputRef = useRef(null)
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+  }, [theme])
 
   useEffect(() => {
     loadArancelData().then(d => { if (d && d.entries) setArancelReady(true) })
@@ -60,20 +49,35 @@ export default function App() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
 
-  async function handleSend(text, files = []) {
-    if (loading) return
+  function toggleTheme() {
+    setTheme(t => t === 'dark' ? 'light' : 'dark')
+  }
 
+  async function handleSend(text, files = []) {
+    if (loading || (!text.trim() && files.length === 0)) return
     const userMsg = { role: 'user', text, files }
     setMessages(prev => [...prev, userMsg])
-
     const newHistory = [...history, { role: 'user', content: text }]
     setHistory(newHistory)
     setLoading(true)
-
     try {
       const { parsed, raw } = await callAduaneroAI(newHistory, files)
       setHistory(prev => [...prev, { role: 'assistant', content: raw }])
       setMessages(prev => [...prev, { role: 'assistant', data: parsed }])
+
+      // Save to history
+      if (parsed && parsed.codigo && parsed.codigo !== '—') {
+        saveToHistory({
+          query: text,
+          mercancia: parsed.mercancia,
+          codigo: parsed.codigo,
+          ad_valorem: parsed.ad_valorem,
+          regimen_legal: parsed.regimen_legal,
+          tiene_valoracion: parsed.tiene_valoracion,
+          total_tributos: parsed.valoracion?.total_tributos,
+          total_importacion: parsed.valoracion?.total_importacion,
+        })
+      }
     } catch (err) {
       setMessages(prev => [...prev, {
         role: 'assistant',
@@ -86,6 +90,7 @@ export default function App() {
           regimen_legal: [], ad_valorem: '—',
           tasa_aduanera: '1%', iva: '16%',
           tiene_valoracion: false, valoracion: null,
+          items: [], pregunta_final: null,
         }
       }])
     } finally {
@@ -93,9 +98,24 @@ export default function App() {
     }
   }
 
+  function handleFollowup(text) {
+    handleSend(text, [])
+  }
+
+  function handleHistoryReload(query) {
+    handleSend(query, [])
+  }
+
   return (
     <div className={styles.app}>
-      <Header />
+      <Header theme={theme} onToggleTheme={toggleTheme} onToggleHistory={() => setShowHistory(true)} />
+
+      <HistoryPanel
+        visible={showHistory}
+        onClose={() => setShowHistory(false)}
+        onReload={handleHistoryReload}
+      />
+
       <div className={styles.msgs}>
         <div className={styles.msgRow}>
           <div className={`${styles.avatar} ${styles.avatarAi}`}>AI</div>
@@ -103,20 +123,19 @@ export default function App() {
         </div>
 
         {messages.map((m, i) => (
-          <div key={i}>
-            {m.role === 'user' && m.files && m.files.length > 0 && (
-              <div className={`${styles.msgRow} ${styles.msgRowUser}`} style={{ marginBottom: '4px' }}>
-                <div className={`${styles.avatar} ${styles.avatarUser}`}>USR</div>
-                <FilePreviewRow files={m.files} />
-              </div>
-            )}
-            <MessageBubble role={m.role} text={m.text} data={m.data} />
-          </div>
+          <MessageBubble
+            key={i}
+            role={m.role}
+            text={m.text}
+            data={m.data}
+            onSendFollowup={handleFollowup}
+          />
         ))}
 
         {loading && <MessageBubble isTyping />}
         <div ref={bottomRef} />
       </div>
+
       <InputBar onSend={handleSend} loading={loading} />
     </div>
   )

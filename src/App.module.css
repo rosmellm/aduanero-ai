@@ -1,47 +1,11 @@
-.app {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-}
-
-.msgs {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  scroll-behavior: smooth;
-}
-
-.msgs::-webkit-scrollbar { width: 4px; }
-.msgs::-webkit-scrollbar-track { background: transparent; }
+.app { display: flex; flex-direction: column; height: 100vh; }
+.msgs { flex: 1; overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; scroll-behavior: smooth; }
+.msgs::-webkit-scrollbar { width: 3px; }
 .msgs::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
-
-.msgRow {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-}
-
-.avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  font-weight: 500;
-  flex-shrink: 0;
-  font-family: var(--mono);
-}
-
-.avatarAi {
-  background: linear-gradient(135deg, var(--gold), var(--gold2));
-  color: #0a0d13;
-}
-
-.msgRowUser {
-  flex-direction: row-reverse;
-}
+.msgRow { display: flex; gap: 8px; align-items: flex-start; }
+.avatar { width: 26px; height: 26px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 500; flex-shrink: 0; font-family: var(--mono); }
+.avatarAi { background: var(--gold2); color: #fff; }
+.welcomeBubble { max-width: 90%; padding: 10px 14px; border-radius: 10px; font-size: 13px; line-height: 1.7; background: var(--bg2); border: 1px solid var(--border); color: var(--text); border-top-left-radius: 3px; }
+.welcomeTitle { font-family: var(--mono); font-size: 10px; font-weight: 500; color: var(--gold2); letter-spacing: .08em; margin-bottom: 5px; text-transform: uppercase; }
+.welcomeList { list-style: none; padding: 0; margin-top: 6px; }
+.welcomeList li { padding: 3px 0; color: var(--text2); font-size: 12px; }

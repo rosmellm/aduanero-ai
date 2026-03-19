@@ -1,37 +1,50 @@
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
   --bg: #0a0d13;
-  --bg2: #111520;
-  --bg3: #181d2a;
-  --bg4: #1e2436;
-  --border: #2a3045;
-  --border2: #3a4560;
-  --gold: #c9a84c;
-  --gold2: #e8c97a;
-  --gold3: #f5e0a0;
-  --cyan: #4dc9e8;
-  --cyan2: #7de0f5;
-  --red: #e85555;
-  --red-bg: #1a0f0f;
-  --red-border: #4a2a2a;
-  --green: #4de8a0;
-  --text: #e8eaf0;
-  --text2: #9ba3b8;
-  --text3: #6b7490;
+  --bg2: #0f1623;
+  --bg3: #162033;
+  --bg4: #1a2640;
+  --border: #1e3a6e;
+  --border2: #2a4f99;
+  --gold: #1a56db;
+  --gold2: #3b82f6;
+  --gold3: #93c5fd;
+  --cyan: #60a5fa;
+  --cyan2: #bfdbfe;
+  --red: #ef4444;
+  --red-bg: #1a0a0a;
+  --red-border: #7f1d1d;
+  --green: #22d3ee;
+  --text: #e8f0fe;
+  --text2: #93a8d4;
+  --text3: #4a6494;
   --mono: 'IBM Plex Mono', monospace;
   --sans: 'IBM Plex Sans', sans-serif;
 }
 
-html, body, #root {
-  height: 100%;
-  overflow: hidden;
+[data-theme="light"] {
+  --bg: #ffffff;
+  --bg2: #f0f4ff;
+  --bg3: #e0eaff;
+  --bg4: #c7d9ff;
+  --border: #a0b8f0;
+  --border2: #2563eb;
+  --gold: #1d4ed8;
+  --gold2: #2563eb;
+  --gold3: #3b82f6;
+  --cyan: #1e40af;
+  --cyan2: #1d4ed8;
+  --red: #dc2626;
+  --red-bg: #fef2f2;
+  --red-border: #fecaca;
+  --green: #0891b2;
+  --text: #0f172a;
+  --text2: #1e3a8a;
+  --text3: #3b82f6;
 }
 
+html, body, #root { height: 100%; overflow: hidden; }
 body {
   background: var(--bg);
   color: var(--text);
@@ -39,8 +52,8 @@ body {
   font-size: 14px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  transition: background 0.3s, color 0.3s;
 }
-
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
