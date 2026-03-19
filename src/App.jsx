@@ -15,14 +15,32 @@ function WelcomeBubble({ arancelReady }) {
         {arancelReady ? '● Base arancelaria cargada: 11.915 subpartidas NANDINA' : '○ Cargando base arancelaria...'}
       </span>
       <br /><br />
-      Escriba el nombre de cualquier mercancía para obtener su clasificación arancelaria con fundamento legal. Si incluye datos FOB/Flete/Seguro, calculo la obligación tributaria proyectada.
+      Escriba el nombre de una mercancía, adjunte un <b>PDF</b>, <b>imagen</b> o <b>factura</b> para clasificación automática.
       <ul style={{ listStyle: 'none', padding: 0, marginTop: '8px' }}>
-        {['Nombre del producto → clasificación NANDINA a 10 dígitos', 'Incluya USD FOB + Flete + Seguro para liquidación', 'Datos extraídos directamente del PDF oficial'].map((t, i) => (
+        {[
+          'Nombre del producto → clasificación NANDINA a 10 dígitos',
+          'Adjunte PDF / imagen de factura o declaración',
+          'Incluya FOB + Flete + Seguro para liquidación tributaria',
+          'Datos extraídos del Decreto N° 4.944 oficial',
+        ].map((t, i) => (
           <li key={i} style={{ padding: '3px 0', color: 'var(--text2)', fontSize: '12px' }}>
             <span style={{ color: 'var(--gold)' }}>▸ </span>{t}
           </li>
         ))}
       </ul>
+    </div>
+  )
+}
+
+function FilePreviewRow({ files }) {
+  if (!files || files.length === 0) return null
+  return (
+    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '4px' }}>
+      {files.map(f => (
+        <span key={f.name} style={{ fontFamily: 'var(--mono)', fontSize: '10px', background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: '4px', padding: '2px 8px', color: 'var(--gold2)' }}>
+          {f.name.endsWith('.pdf') ? '📄' : '🖼'} {f.name.slice(0, 20)}{f.name.length > 20 ? '…' : ''}
+        </span>
+      ))}
     </div>
   )
 }
@@ -35,24 +53,25 @@ export default function App() {
   const bottomRef = useRef(null)
 
   useEffect(() => {
-    loadArancelData().then(d => {
-      if (d && d.entries) setArancelReady(true)
-    })
+    loadArancelData().then(d => { if (d && d.entries) setArancelReady(true) })
   }, [])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
 
-  async function handleSend(text) {
+  async function handleSend(text, files = []) {
     if (loading) return
-    const userMsg = { role: 'user', text }
+
+    const userMsg = { role: 'user', text, files }
     setMessages(prev => [...prev, userMsg])
+
     const newHistory = [...history, { role: 'user', content: text }]
     setHistory(newHistory)
     setLoading(true)
+
     try {
-      const { parsed, raw } = await callAduaneroAI(newHistory)
+      const { parsed, raw } = await callAduaneroAI(newHistory, files)
       setHistory(prev => [...prev, { role: 'assistant', content: raw }])
       setMessages(prev => [...prev, { role: 'assistant', data: parsed }])
     } catch (err) {
@@ -82,9 +101,19 @@ export default function App() {
           <div className={`${styles.avatar} ${styles.avatarAi}`}>AI</div>
           <WelcomeBubble arancelReady={arancelReady} />
         </div>
+
         {messages.map((m, i) => (
-          <MessageBubble key={i} role={m.role} text={m.text} data={m.data} />
+          <div key={i}>
+            {m.role === 'user' && m.files && m.files.length > 0 && (
+              <div className={`${styles.msgRow} ${styles.msgRowUser}`} style={{ marginBottom: '4px' }}>
+                <div className={`${styles.avatar} ${styles.avatarUser}`}>USR</div>
+                <FilePreviewRow files={m.files} />
+              </div>
+            )}
+            <MessageBubble role={m.role} text={m.text} data={m.data} />
+          </div>
         ))}
+
         {loading && <MessageBubble isTyping />}
         <div ref={bottomRef} />
       </div>

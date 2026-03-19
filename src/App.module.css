@@ -41,3 +41,7 @@
   background: linear-gradient(135deg, var(--gold), var(--gold2));
   color: #0a0d13;
 }
+
+.msgRowUser {
+  flex-direction: row-reverse;
+}
