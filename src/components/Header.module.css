@@ -31,3 +31,16 @@
   background: var(--bg3); border: 1px solid var(--border);
   border-radius: 4px; padding: 3px 7px;
 }
+
+.alertDot {
+  position: absolute;
+  top: -4px; right: -4px;
+  background: var(--red);
+  color: #fff;
+  font-size: 9px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono);
+}
+.iconBtn { position: relative; }
